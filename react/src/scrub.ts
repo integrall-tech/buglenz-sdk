@@ -1,6 +1,6 @@
 import type { Breadcrumb, ErrorEvent } from '@sentry/react';
-import { isDenied, isIdentifier } from './keys';
-import { maskText } from './text';
+import { isDenied, isIdentifier } from './keys.js';
+import { maskText } from './text.js';
 
 export const FILTERED = '[Filtered]';
 const MAX_DEPTH = 12;

@@ -1,4 +1,4 @@
-import rules from './scrub-keys.json';
+import rules from './scrub-keys.json' with { type: 'json' };
 
 /** Lowercase, without the separators people disagree about. */
 export function normalise(key: string): string {

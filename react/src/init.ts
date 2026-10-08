@@ -1,8 +1,9 @@
 import * as Sentry from '@sentry/react';
 import type { BrowserOptions } from '@sentry/react';
-import { scrubBreadcrumb, scrubEvent } from './scrub';
-import { isDenied } from './keys';
-import { maskText } from './text';
+import { scrubBreadcrumb, scrubEvent } from './scrub.js';
+import { isDenied } from './keys.js';
+import { releaseOf } from './release.js';
+import { maskText } from './text.js';
 
 /** What the wrapper decides: an app cannot override these through `extra`. */
 type Fixed = 'dsn' | 'release' | 'environment' | 'dataCollection' | 'beforeSend' | 'beforeBreadcrumb' | 'initialScope';
@@ -26,16 +27,8 @@ export interface BugLenzOptions {
   extra?: Omit<Partial<BrowserOptions>, Fixed>;
 }
 
-const APP_NAME = /^[a-z0-9][a-z0-9._-]*$/;
-
 let strictMode = true;
 let extraKeys: string[] = [];
-
-export function releaseOf(app: string, version: string): string {
-  if (!APP_NAME.test(app)) throw new Error(`BugLenz: "app" must be lowercase letters, digits, ".", "_" or "-" (got "${app}")`);
-  if (!version || /[@\s]/.test(version)) throw new Error('BugLenz: "version" is required and cannot contain "@" or spaces');
-  return `${app}@${version}`;
-}
 
 export function initBugLenz(options: BugLenzOptions): void {
   if (!options.dsn) throw new Error('BugLenz: "dsn" is required; take it from the project in the instance');

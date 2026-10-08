@@ -1,0 +1,25 @@
+{
+  "name": "buglenz-contract-react",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4273 --strictPort"
+  },
+  "dependencies": {
+    "@integrall/buglenz-react": "file:../.state/integrall-buglenz-react-0.1.0.tgz",
+    "@sentry/react": "11.5.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@sentry/vite-plugin": "5.4.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "playwright": "1.63.0",
+    "typescript": "6.0.3",
+    "vite": "8.3.3"
+  }
+}

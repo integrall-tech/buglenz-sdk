@@ -4,8 +4,8 @@ Thin wrappers around the official Sentry SDKs for apps that report errors to a B
 
 | Package | Platform | Status |
 |---|---|---|
-| `react/` | `@sentry/react` | planned |
-| `spring-boot/` | `sentry-spring-boot-starter-jakarta` (Spring Boot 3, Java 21) | planned |
+| `react/` | `@sentry/react` 11.5.0 | homologated, see `docs/matriz.md` |
+| `spring-boot/` | `sentry-spring-boot-starter-jakarta` 8.60.0 (Spring Boot 3, Java 21) | homologated, see `docs/matriz.md` |
 
 Each wrapper fixes the homologated SDK version, the `release` format (`<app>@<version>`),
 `environment`, the standard tags (`cliente`, `tenant`) and a first layer of personal-data
@@ -29,3 +29,10 @@ BUGLENZ_SERVER_KEYS_RS=/path/to/keys.rs npm test   # also compares with the inst
 ```
 
 The comparison fails when the instance's list changes and this one does not.
+
+## Contract tests
+
+`contract/run.sh <instance image> [react|spring|all]` starts the image with PostgreSQL, builds an app
+with each wrapper, makes it raise errors containing personal data and asserts, through the instance's
+API and on the raw envelopes, what arrived and what left the application. Needs Docker, Node 24 and
+access to the image.

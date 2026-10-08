@@ -1,5 +1,5 @@
 import { sentryVitePlugin } from '@sentry/vite-plugin';
-import { releaseOf } from './init';
+import { releaseOf } from './release.js';
 
 export interface SourceMapOptions {
   /** Base URL of the instance, for example `https://errors.buglenz.dev`. */

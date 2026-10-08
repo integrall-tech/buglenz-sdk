@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: Instance image for the contract run (needs the GHCR_READ_TOKEN secret)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          cache-dependency-path: spring-boot/pom.xml
+      - name: Shared rules
+        run: npm test
+      - name: React wrapper
+        working-directory: react
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
+          npm test
+          npm run build
+      - name: Spring Boot wrapper
+        working-directory: spring-boot
+        run: mvn -B verify
+      - name: No reference to the instance's code base
+        run: |
+          if grep -rniE 'rustrak|@rustrak' --include='*.json' --include='*.ts' --include='*.tsx' --include='*.java' --include='*.xml' \
+               --exclude-dir=node_modules --exclude-dir=target --exclude-dir=dist --exclude=package-lock.json .; then
+            echo "a wrapper must not depend on or mention the instance's code base"; exit 1
+          fi
+
+  contract:
+    # Runs the wrappers against a published instance image. The package is private: the secret
+    # must be a token that can read it (read:packages).
+    if: github.event_name == 'workflow_dispatch' && inputs.image != ''
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Log in to the registry
+        env:
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+        run: echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Contract run
+        env:
+          PLAYWRIGHT_DEPS: '1'
+        run: contract/run.sh "${{ inputs.image }}" all
