@@ -1,0 +1,52 @@
+{
+  "name": "@integrall/buglenz-react",
+  "version": "0.1.0",
+  "description": "Thin wrapper around @sentry/react for apps reporting to a BugLenz instance",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "sync": "cp ../shared/scrub-keys.json src/scrub-keys.json"
+  },
+  "peerDependencies": {
+    "@sentry/react": "11.5.0",
+    "react": ">=18",
+    "@sentry/vite-plugin": "5.4.1"
+  },
+  "devDependencies": {
+    "@sentry/react": "11.5.0",
+    "@sentry/vite-plugin": "5.4.1",
+    "@types/react": "^19.0.0",
+    "jsdom": "^26.0.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "^5.7.0",
+    "vite": "8.3.3",
+    "vitest": "^3.0.0",
+    "@types/node": "^24.0.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/dom": "^10.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "import": "./dist/vite.js"
+    }
+  },
+  "peerDependenciesMeta": {
+    "@sentry/vite-plugin": {
+      "optional": true
+    }
+  }
+}
