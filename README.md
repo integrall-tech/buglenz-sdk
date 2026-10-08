@@ -14,3 +14,18 @@ protection (`sendDefaultPii` off, `beforeSend` and `beforeBreadcrumb` filters).
 The compatibility matrix (SDK version x instance version) lives in `docs/matriz.md`.
 
 License: MIT.
+
+## Personal-data key rules (`shared/`)
+
+`shared/scrub-keys.json` is the single list of keys whose values a wrapper removes before sending
+(layer 1). Every platform reproduces the same rules: keys are compared lowercase, without `_`, `-`,
+space and `.`; they are denied when they equal an `exact` entry or contain a `contains` entry
+(except `tokens`, which is a count). `shared/scrub-vectors.json` holds the cases each platform
+implementation must pass; `shared/scrub-keys.mjs` is the reference.
+
+```
+npm test                                   # lists and vectors
+BUGLENZ_SERVER_KEYS_RS=/path/to/keys.rs npm test   # also compares with the instance's list
+```
+
+The comparison fails when the instance's list changes and this one does not.
