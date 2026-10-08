@@ -73,6 +73,30 @@ void main() {
       expect(out.breadcrumbs!.map((b) => b.message), ['checkout de [email]']);
     });
 
+    test('the device context loses what identifies one phone and keeps what explains an error', () {
+      final event = SentryEvent(
+        contexts: Contexts(
+          device: SentryDevice(
+            name: "Tablet da Ana",
+            unknown: {'id': 'a643d171d2bd4ac0985fa2c53b2c82ce'},
+            deviceUniqueIdentifier: 'uuid-1',
+            bootTime: DateTime.utc(2026, 10, 8, 13, 36),
+            model: 'SM-X115',
+            brand: 'samsung',
+            memorySize: 3819933696,
+          ),
+        ),
+      );
+      final device = scrubEvent(event).contexts.device!;
+      expect(device.name, isNull);
+      expect(device.unknown?.containsKey('id') ?? false, isFalse);
+      expect(device.deviceUniqueIdentifier, isNull);
+      expect(device.bootTime, isNull);
+      expect(device.model, 'SM-X115');
+      expect(device.brand, 'samsung');
+      expect(device.memorySize, 3819933696);
+    });
+
     test('an unknown object in the data is filtered, not sent', () {
       expect(scrubValue({'x': Object()}), {'x': '[Filtered]'});
     });

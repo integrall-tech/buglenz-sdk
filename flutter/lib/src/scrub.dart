@@ -62,6 +62,8 @@ SentryEvent scrubEvent(SentryEvent event, [Iterable<String> extra = const []]) {
     };
   }
 
+  _scrubDevice(event.contexts.device);
+
   final crumbs = event.breadcrumbs;
   if (crumbs != null) {
     event.breadcrumbs = [
@@ -82,4 +84,24 @@ Breadcrumb? scrubBreadcrumb(Breadcrumb? crumb, [Iterable<String> extra = const [
     crumb.data = (scrubValue(data, extra: extra) as Map).cast<String, dynamic>();
   }
   return crumb;
+}
+
+/// The device context carries identifiers that follow one phone around (an id, a unique
+/// identifier, the exact boot time, a user-chosen name). They are not needed to read an error.
+void _scrubDevice(SentryDevice? device) {
+  if (device == null) return;
+  device.name = null;
+  device.deviceUniqueIdentifier = null;
+  device.bootTime = null;
+  // The native layer adds an `id` the typed class does not model; it travels in `unknown`.
+  // `unknown` is marked internal by the SDK; the dependency is pinned to one version for this.
+  // ignore: invalid_use_of_internal_member
+  final extra = device.unknown;
+  if (extra != null) {
+    try {
+      extra.remove('id');
+    } on UnsupportedError {
+      // an unmodifiable map: nothing the wrapper can do here
+    }
+  }
 }
