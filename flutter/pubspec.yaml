@@ -1,0 +1,17 @@
+name: buglenz_flutter
+description: Thin wrapper around sentry_flutter for apps reporting to a BugLenz instance.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sentry_flutter: 9.30.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
