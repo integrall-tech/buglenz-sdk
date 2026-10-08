@@ -107,6 +107,51 @@ buglenz.cliente=acme
   `sentry.send-default-pii=false` com prioridade máxima; configurá-los à mão não adianta.
 - Os `contexts` do evento (sistema, dispositivo) não são inspecionados.
 
+## 3b. App Flutter
+
+```bash
+# pubspec.yaml
+#   buglenz_flutter: { git: { url: <repositório dos wrappers>, path: flutter } }   # enquanto não houver registry
+#   sentry_flutter: 9.30.1
+```
+
+```dart
+Future<void> main() async {
+  await initBugLenz(
+    dsn: const String.fromEnvironment('BUGLENZ_DSN'),
+    app: 'vendax-mobile',          // o release vira "vendax-mobile@<versão>"
+    version: '1.4.2+7',            // a versão do pubspec.yaml; o +build é aceito
+    environment: 'production',
+    tenant: 'acme-sp',
+    cliente: 'acme',
+    appRunner: () => runApp(const MyApp()),
+  );
+}
+
+await identify(usuario.id);        // só o id interno; e-mail e documentos são recusados
+```
+
+- O wrapper desliga captura de tela, corpo de requisição, falhas de requisição e rótulos de toques, e remove
+  do contexto do dispositivo o identificador do aparelho, o nome e o horário exato de boot.
+- **Nunca coloque e-mail, documento ou IP no escopo do Sentry** (`setUser`, `setExtra`...). Eventos criados pela
+  camada nativa (um crash do Android ou do iOS) **não passam pelos filtros do Dart**: levam o que estiver no
+  escopo. A instância mascara na entrada, mas o valor original já saiu do aparelho. Use só `identify(id)`.
+
+### Ofuscação: a escolha é de quem cria o app
+
+O Flutter permite compilar o release com `--obfuscate --split-debug-info=<pasta>`. Isso protege o código
+contra engenharia reversa, mas o erro chega à instância **ilegível**: o tipo da exceção vira um nome curto
+(`nz`) que muda a cada build, e os frames viram endereços. **A instância ainda não traduz símbolos.**
+
+| Escolha | O que a instância mostra | Quando serve |
+|---|---|---|
+| **Sem ofuscação** (sem `--obfuscate` e sem `--split-debug-info`) | tipo, arquivo, linha e função corretos; agrupa entre versões | o padrão recomendado hoje; sempre nos builds de `homolog` |
+| **Com ofuscação** | tipo e frames ilegíveis até o pacote de symbolication existir (G17, pacote 016) | quando a proteção do código é uma exigência do app |
+
+Cada equipe decide por app (e pode decidir por ambiente: `homolog` sem ofuscação, `production` ofuscado). Quem
+ofusca deve **guardar os símbolos** (`--split-debug-info` e o mapa de ofuscação) de cada build, porque são
+eles que farão a tradução quando a symbolication existir.
+
 ## 4. Valide em homologação, nunca direto em produção
 
 1. Provoque um erro de teste no app em `homolog`.
@@ -138,4 +183,4 @@ crie no projeto uma regra `new_issue` apontando para ele. A API correspondente �
 
 - Sem tunnel: bloqueadores de anúncio podem impedir o envio direto do navegador.
 - Integração com o roteador do React ainda não incluída (use `extra.integrations`).
-- Sem Flutter nem mobile nesta versão.
+- Flutter: iOS não foi verificado; crashes nativos de C/C++ (minidump) e o R8 do Android (nomes Java/Kotlin ofuscados) também não.
