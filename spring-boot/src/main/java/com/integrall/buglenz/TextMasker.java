@@ -170,7 +170,8 @@ public final class TextMasker {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '-';
     }
 
-    private static String maskEmails(String text) {
+    /** Masks only e-mail addresses, for values under an {@code *id} key: an id made of digits stays an id. */
+    public static String maskEmails(String text) {
         StringBuilder out = null;
         int last = 0;
         int i = 0;
@@ -198,5 +199,16 @@ public final class TextMasker {
         }
         if (out == null) return text;
         return out.append(text, last, text.length()).toString();
+    }
+
+    /** A URL without its query string and fragment (they carry tokens), with the rest masked. */
+    public static String stripUrl(String url) {
+        if (url == null) return null;
+        int cut = url.length();
+        int q = url.indexOf('?');
+        int h = url.indexOf('#');
+        if (q >= 0) cut = Math.min(cut, q);
+        if (h >= 0) cut = Math.min(cut, h);
+        return mask(url.substring(0, cut));
     }
 }

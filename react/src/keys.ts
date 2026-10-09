@@ -17,6 +17,12 @@ export function isDenied(key: string, extra: readonly string[] = []): boolean {
   );
 }
 
+/** Keys that name an id (`id`, `user_id`, `spanId`), as opposed to the other identifier keys. */
+export function isIdKey(key: string): boolean {
+  const k = normalise(key);
+  return rules.identifier.suffix.some((s) => k.endsWith(s));
+}
+
 /** Keys that hold identifiers or timestamps, never free text: the masks skip them. */
 export function isIdentifier(key: string): boolean {
   const k = normalise(key);

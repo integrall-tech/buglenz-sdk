@@ -25,6 +25,14 @@ class SharedFilesTest {
         return Stream.of(JSON.readTree(SHARED.resolve("text-vectors.json").toFile())).flatMap(a -> stream(a));
     }
 
+    static Stream<JsonNode> urlVectors() throws IOException {
+        return Stream.of(JSON.readTree(SHARED.resolve("url-vectors.json").toFile())).flatMap(a -> stream(a));
+    }
+
+    static Stream<JsonNode> idVectors() throws IOException {
+        return Stream.of(JSON.readTree(SHARED.resolve("id-vectors.json").toFile())).flatMap(a -> stream(a));
+    }
+
     private static Stream<JsonNode> stream(JsonNode array) {
         return java.util.stream.StreamSupport.stream(array.spliterator(), false);
     }
@@ -56,5 +64,17 @@ class SharedFilesTest {
     void extraKeysExtendTheExactList() {
         assertThat(ScrubRules.shared().isDenied("matricula")).isFalse();
         assertThat(ScrubRules.shared().isDenied("Matri-cula", java.util.List.of("matricula"))).isTrue();
+    }
+
+    @ParameterizedTest
+    @MethodSource("urlVectors")
+    void urlVector(JsonNode v) {
+        assertThat(TextMasker.stripUrl(v.get("in").asText())).as(v.toString()).isEqualTo(v.get("out").asText());
+    }
+
+    @ParameterizedTest
+    @MethodSource("idVectors")
+    void idVector(JsonNode v) {
+        assertThat(TextMasker.maskEmails(v.get("in").asText())).as(v.toString()).isEqualTo(v.get("out").asText());
     }
 }

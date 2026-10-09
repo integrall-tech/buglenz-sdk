@@ -1,0 +1,10 @@
+[
+  { "in": "ana@example.com", "out": "[email]" },
+  { "in": "x ana@example.com y", "out": "x [email] y" },
+  { "in": "bia@example.com.br", "out": "[email]" },
+  { "in": "u-42", "out": "u-42" },
+  { "in": "52998224725", "out": "52998224725" },
+  { "in": "4111111111111111", "out": "4111111111111111" },
+  { "in": "a1b2c3d4e5f60718", "out": "a1b2c3d4e5f60718" },
+  { "in": "vendax-web@1.4.2", "out": "vendax-web@1.4.2" }
+]
