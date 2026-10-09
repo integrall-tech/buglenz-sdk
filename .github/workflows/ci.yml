@@ -32,7 +32,11 @@ jobs:
         run: |
           git clone --depth 1 --branch 3.41.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
           echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+      # The wrappers' key list must be the instance's. The instance writes its rules as code; the test
+      # reads them from the instance's public source and fails when either side changes alone.
       - name: Shared rules
+        env:
+          BUGLENZ_SERVER_KEYS_URL: https://raw.githubusercontent.com/integrall-tech/buglenz/main/apps/server/src/scrub/keys.rs
         run: npm test
       - name: React wrapper
         working-directory: react
