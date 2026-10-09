@@ -80,6 +80,12 @@ public final class ScrubRules {
     }
 
     /** Keys that hold identifiers or timestamps, never free text: the masks skip them. */
+    /** Keys that name an id ({@code id}, {@code user_id}, {@code spanId}), unlike the other identifier keys. */
+    public boolean isIdKey(String key) {
+        String k = normalise(key);
+        return identifierSuffix.stream().anyMatch(k::endsWith);
+    }
+
     public boolean isIdentifier(String key) {
         String k = normalise(key);
         return identifierSuffix.stream().anyMatch(k::endsWith) || identifierExact.contains(k);

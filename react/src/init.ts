@@ -6,7 +6,7 @@ import { releaseOf } from './release.js';
 import { maskText } from './text.js';
 
 /** What the wrapper decides: an app cannot override these through `extra`. */
-type Fixed = 'dsn' | 'release' | 'environment' | 'dataCollection' | 'beforeSend' | 'beforeBreadcrumb' | 'initialScope';
+type Fixed = 'dsn' | 'release' | 'environment' | 'dataCollection' | 'beforeSend' | 'beforeSendTransaction' | 'beforeBreadcrumb' | 'initialScope';
 
 export interface BugLenzOptions {
   /** DSN of the project in the instance. There is no fallback. */
@@ -64,6 +64,9 @@ export function initBugLenz(options: BugLenzOptions): void {
       const clean = scrubEvent(event, extraKeys);
       return options.beforeSend ? options.beforeSend(clean, hint) : clean;
     },
+    // Transactions and spans carry URLs, SQL and user data too, and an app can switch tracing on
+    // through `extra`: they get the same filter as an error event.
+    beforeSendTransaction: (event) => scrubEvent(event as never, extraKeys) as never,
     beforeBreadcrumb: (crumb) => scrubBreadcrumb(crumb, extraKeys),
   });
 }
