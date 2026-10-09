@@ -23,6 +23,12 @@ bool isDenied(String key, [Iterable<String> extra = const []]) {
   return false;
 }
 
+/// Keys that name an id (`id`, `user_id`, `spanId`), as opposed to the other identifier keys.
+bool isIdKey(String key) {
+  final k = normalise(key);
+  return identifierSuffix.any(k.endsWith);
+}
+
 /// Keys that hold identifiers or timestamps, never free text: the masks skip them.
 bool isIdentifier(String key) {
   final k = normalise(key);

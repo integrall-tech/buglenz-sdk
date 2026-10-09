@@ -211,3 +211,12 @@ String _maskEmails(String text) {
 
 /// Masks every recognised value; returns the input itself when there is none.
 String maskText(String text) => text.isEmpty ? text : _maskEmails(_maskNumbers(text));
+
+/// Masks only e-mail addresses, for values under an `*id` key: an id made of digits stays an id.
+String maskEmails(String text) => text.isEmpty ? text : _maskEmails(text);
+
+/// A URL without its query string and fragment (they carry tokens), with the rest masked.
+String stripUrl(String url) {
+  final cut = url.indexOf(RegExp(r'[?#]'));
+  return maskText(cut < 0 ? url : url.substring(0, cut));
+}
