@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:buglenz_flutter/buglenz_flutter.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -41,6 +43,28 @@ void main() {
       expect(out.user!.ipAddress, isNull);
       expect(out.tags, {'nota': 'contato [email]', 'tenant': 't1', 'cliente': 'acme'});
       expect(out.message!.formatted, 'pedido recusado para cpf [cpf] ([email])');
+    });
+
+    test('filters the custom contexts an app sets, not only extra', () async {
+      final o = SentryFlutterOptions();
+      configure(o);
+      final event = SentryEvent();
+      event.contexts['checkout'] = {'password': 'hunter2', 'nota': 'contato ana@example.com', 'itens': 3};
+      final out = (await o.beforeSend!(event, Hint()))!;
+      expect(out.contexts['checkout'], {'password': '[Filtered]', 'nota': 'contato [email]', 'itens': 3});
+    });
+
+    test('the filtered event still serializes, with the SDK\'s own contexts intact', () async {
+      final o = SentryFlutterOptions();
+      configure(o);
+      final event = SentryEvent();
+      event.contexts.runtimes = [SentryRuntime(name: 'Dart', version: '3.11')];
+      event.contexts['checkout'] = {'password': 'hunter2'};
+      final out = (await o.beforeSend!(event, Hint()))!;
+      // What the SDK does when it builds the envelope: an exception here drops the event.
+      final json = jsonEncode(out.toJson());
+      expect(json, contains('"runtime":{"name":"Dart"'));
+      expect(json, isNot(contains('hunter2')));
     });
 
     test('a beforeSend of the app runs after the filter and sees a clean event', () async {
@@ -89,6 +113,7 @@ void main() {
       );
       final device = scrubEvent(event).contexts.device!;
       expect(device.name, isNull);
+      // ignore: invalid_use_of_internal_member
       expect(device.unknown?.containsKey('id') ?? false, isFalse);
       expect(device.deviceUniqueIdentifier, isNull);
       expect(device.bootTime, isNull);

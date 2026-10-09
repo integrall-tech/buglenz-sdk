@@ -7,8 +7,21 @@ LOG = "/rec/traffic.jsonl"
 
 
 class H(http.server.BaseHTTPRequestHandler):
+    def _body(self):
+        """The request body, whether it came with a length or chunked (the Dart SDK sends chunked)."""
+        if self.headers.get("transfer-encoding", "").lower() == "chunked":
+            out = b""
+            while True:
+                size = int(self.rfile.readline().split(b";")[0].strip() or b"0", 16)
+                if size == 0:
+                    self.rfile.readline()
+                    return out
+                out += self.rfile.read(size)
+                self.rfile.readline()
+        return self.rfile.read(int(self.headers.get("content-length", 0)))
+
     def do_POST(self):
-        body = self.rfile.read(int(self.headers.get("content-length", 0)))
+        body = self._body()
         raw = body
         if self.headers.get("content-encoding") == "gzip":
             try:
@@ -18,7 +31,8 @@ class H(http.server.BaseHTTPRequestHandler):
         with open(LOG, "ab") as f:
             f.write(json.dumps({"path": self.path, "body": raw.decode("utf-8", "replace")}).encode() + b"\n")
         req = urllib.request.Request(UPSTREAM + self.path, data=body, method="POST",
-                                     headers={k: v for k, v in self.headers.items() if k.lower() not in ("host", "content-length")})
+                                     headers={**{k: v for k, v in self.headers.items() if k.lower() not in ("host", "content-length", "transfer-encoding")},
+                                              "Content-Length": str(len(body))})
         try:
             r = urllib.request.urlopen(req)
             code, out = r.status, r.read()

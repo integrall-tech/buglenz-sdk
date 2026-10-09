@@ -1,6 +1,6 @@
 // Assertions of the contract run, against the instance's API and the saved raw envelopes.
 //
-//   node assert.mjs react|spring
+//   node assert.mjs react|spring|flutter
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -113,8 +113,34 @@ async function spring() {
   check(rows.length === 0, 'release health stays empty, no negative values', JSON.stringify(rows));
 }
 
+async function flutter() {
+  const p = env.mobile;
+  const issues = await issuesOf(p, 2);
+  check(issues?.length === 2, 'two issues', `got ${issues?.length}`);
+  if (!issues) return;
+  const handled = issues.find((i) => JSON.stringify(i).includes('Bad state'));
+  const second = issues.find((i) => JSON.stringify(i).includes('uncaught in worker'));
+  check(!!handled && JSON.stringify(handled).includes('cpf [cpf] ([email])'), 'exception title masked');
+  check(!!second, 'second exception reported');
+  for (const issue of [handled, second].filter(Boolean)) {
+    const d = await eventOf(p, issue);
+    const data = d.data ?? d;
+    check(JSON.stringify(data.user) === '{"id":"u-42"}', 'stored user is the id only', JSON.stringify(data.user));
+    check(data.tags?.cliente === 'acme' && data.tags?.tenant === 't1' && data.tags?.nota === 'contato [email]', 'tags kept, personal tag masked', JSON.stringify(data.tags));
+    check((d.release ?? data.release) === 'contract-mobile@1.0.0+1', 'release is contract-mobile@1.0.0+1 (the + of the pubspec kept)', String(d.release ?? data.release));
+    check((data.environment ?? d.environment) === 'homolog', 'environment is homolog');
+    check(data.contexts?.extra?.password === '[Filtered]', 'custom context password filtered', JSON.stringify(data.contexts?.extra));
+    const stored = JSON.stringify(d);
+    check(LEAKS.every((l) => !stored.includes(l)), 'no original personal value in the stored event', LEAKS.filter((l) => stored.includes(l)).join(','));
+  }
+  const leaks = rawLeaks(join(state, 'flutter-traffic.jsonl'));
+  check(leaks.length === 0, 'no original personal value in what left the app', leaks.join(','));
+  const raw = readFileSync(join(state, 'flutter-traffic.jsonl'), 'utf8');
+  check(!/"device_unique_identifier"|"installation_id"/.test(raw), 'no device identifier left the app');
+}
+
 const which = process.argv[2];
-await (which === 'react' ? react() : which === 'spring' ? spring() : Promise.reject(new Error('usage: assert.mjs react|spring')));
+await (which === 'react' ? react() : which === 'spring' ? spring() : which === 'flutter' ? flutter() : Promise.reject(new Error('usage: assert.mjs react|spring|flutter')));
 if (failures.length) {
   console.log(`\n${failures.length} check(s) failed`);
   process.exit(1);

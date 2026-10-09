@@ -63,6 +63,7 @@ SentryEvent scrubEvent(SentryEvent event, [Iterable<String> extra = const []]) {
   }
 
   _scrubDevice(event.contexts.device);
+  _scrubCustomContexts(event.contexts, extra);
 
   final crumbs = event.breadcrumbs;
   if (crumbs != null) {
@@ -102,6 +103,18 @@ void _scrubDevice(SentryDevice? device) {
       extra.remove('id');
     } on UnsupportedError {
       // an unmodifiable map: nothing the wrapper can do here
+    }
+  }
+}
+
+/// What an app puts in with `setContexts` is a plain map (or text), as free as `extra`. The SDK's own
+/// contexts (device, os, app, trace, and `runtimes`, a list of typed objects) are not plain data and
+/// are left alone: rewriting them breaks the event's serialization and the SDK drops it silently.
+void _scrubCustomContexts(Contexts contexts, Iterable<String> extra) {
+  for (final key in contexts.keys.toList()) {
+    final value = contexts[key];
+    if (value is Map || value is String) {
+      contexts[key] = scrubValue(value, extra: extra, key: key);
     }
   }
 }

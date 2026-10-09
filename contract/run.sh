@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Contract run: the wrappers against a published instance image.
 #
-#   contract/run.sh ghcr.io/integrall-tech/buglenz-server:v0.16.0-itl.5 [react|spring|all]
+#   contract/run.sh ghcr.io/integrall-tech/buglenz-server:v0.16.0-itl.5 [react|spring|flutter|all]
 #
 # KEEP=1 leaves the containers up for inspection.
 set -euo pipefail
@@ -49,9 +49,19 @@ run_spring() {
   node "$HERE/assert.mjs" spring
 }
 
+run_flutter() {
+  echo "== flutter"
+  ( cd "$HERE/flutter-app" && flutter pub get >/dev/null \
+    && BUGLENZ_DSN="http://$(json "['mobile']['key']")@127.0.0.1:${REC_PORT:-18096}/$(json "['mobile']['id']")" flutter test test/contract_test.dart )
+  sleep 3
+  docker cp bl-rec:/rec/traffic.jsonl "$STATE/flutter-traffic.jsonl"
+  node "$HERE/assert.mjs" flutter
+}
+
 case "$WHICH" in
   react) run_react ;;
   spring) run_spring ;;
-  all) run_react; run_spring ;;
-  *) echo "usage: run.sh <image> [react|spring|all]"; exit 2 ;;
+  flutter) run_flutter ;;
+  all) run_react; run_spring; run_flutter ;;
+  *) echo "usage: run.sh <image> [react|spring|flutter|all]"; exit 2 ;;
 esac
