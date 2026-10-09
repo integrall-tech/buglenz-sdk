@@ -58,6 +58,7 @@ void configureBugLenz(
       final clean = scrubEvent(event, _extraKeys);
       return beforeSend == null ? clean : await beforeSend(clean, hint);
     }
+    ..beforeSendTransaction = ((transaction, hint) => scrubTransaction(transaction, _extraKeys))
     ..beforeBreadcrumb = (crumb, hint) => scrubBreadcrumb(crumb, _extraKeys);
 
   final tags = <String, String>{

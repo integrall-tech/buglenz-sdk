@@ -28,6 +28,18 @@ void main() {
     });
   }
 
+  for (final v in (shared('url-vectors.json') as List).cast<Map<String, dynamic>>()) {
+    test('url vector ${jsonEncode(v['in'])}', () {
+      expect(stripUrl(v['in'] as String), v['out']);
+    });
+  }
+
+  for (final v in (shared('id-vectors.json') as List).cast<Map<String, dynamic>>()) {
+    test('id vector ${jsonEncode(v['in'])}', () {
+      expect(maskEmails(v['in'] as String), v['out']);
+    });
+  }
+
   test('extra keys extend the exact list', () {
     expect(isDenied('matricula'), isFalse);
     expect(isDenied('Matri-cula', ['matricula']), isTrue);

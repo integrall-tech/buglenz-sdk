@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:buglenz_flutter/buglenz_flutter.dart';
 import 'package:flutter_test/flutter_test.dart';
+// ignore: depend_on_referenced_packages, implementation_imports
+import 'package:sentry/src/sentry_tracer.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 void configure(SentryFlutterOptions o, {String env = 'homolog', String dsn = 'http://k@localhost:1/1', String app = 'vendax-mobile', String version = '1.4.2+7'}) {
@@ -65,6 +67,56 @@ void main() {
       final json = jsonEncode(out.toJson());
       expect(json, contains('"runtime":{"name":"Dart"'));
       expect(json, isNot(contains('hunter2')));
+    });
+
+    // ---- audit of 2026-10-09 (invariant I4): ids, URLs and transactions ----
+
+    test('masks an e-mail the SDK put in user.id and keeps an ordinary id', () async {
+      final o = SentryFlutterOptions();
+      configure(o);
+      final out = (await o.beforeSend!(SentryEvent(user: SentryUser(id: 'ana@example.com')), Hint()))!;
+      expect(out.user!.id, '[email]');
+      final plain = (await o.beforeSend!(SentryEvent(user: SentryUser(id: 'u-42')), Hint()))!;
+      expect(plain.user!.id, 'u-42');
+    });
+
+    test('drops the query string and the fragment of the request url', () async {
+      final o = SentryFlutterOptions();
+      configure(o);
+      final event = SentryEvent(request: SentryRequest(url: 'https://a.example.com/p?x=1#access_token=abc', method: 'GET'));
+      final out = (await o.beforeSend!(event, Hint()))!;
+      expect(out.request!.url, 'https://a.example.com/p');
+    });
+
+    test('masks an e-mail under a key that ends in id and leaves other ids alone', () {
+      final out = scrubValue({'customer_id': 'ana@example.com', 'order_id': '4111111111111111'}) as Map;
+      expect(out, {'customer_id': '[email]', 'order_id': '4111111111111111'});
+    });
+
+    test('strips the urls inside breadcrumbs', () {
+      final crumb = scrubBreadcrumb(Breadcrumb(category: 'navigation', data: {'from': '/a?x=1#t', 'to': '/b/ana@example.com#t'}))!;
+      expect(crumb.data, {'from': '/a', 'to': '/b/[email]'});
+    });
+
+    test('installs a transaction filter that cleans the transaction and its spans', () async {
+      final o = SentryFlutterOptions();
+      configure(o);
+      expect(o.beforeSendTransaction, isNotNull);
+      o.tracesSampleRate = 1.0; // tracing is off by default; an app can switch it on, and then this filter runs
+      // ignore: invalid_use_of_internal_member
+      final tracer = Hub(o).startTransaction('/clientes', 'ui.load', bindToScope: false) as SentryTracer;
+      final span = tracer.startChild('http.client', description: 'GET /api/clientes/ana@example.com?x=1');
+      span.setData('password', 'hunter2');
+      span.setTag('nota', 'contato ana@example.com');
+      await span.finish();
+      await tracer.finish();
+      final tx = SentryTransaction(tracer, user: SentryUser(id: 'u-1', email: 'ana@example.com'));
+      final out = (await o.beforeSendTransaction!(tx, Hint()))!;
+      expect(out.user!.email, isNull);
+      expect(out.user!.id, 'u-1');
+      expect(out.spans.single.context.description, 'GET /api/clientes/[email]?x=1');
+      expect(out.spans.single.data['password'], '[Filtered]');
+      expect(out.spans.single.tags['nota'], 'contato [email]');
     });
 
     test('a beforeSend of the app runs after the filter and sees a clean event', () async {

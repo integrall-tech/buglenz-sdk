@@ -8,7 +8,9 @@ const _maxDepth = 12;
 
 /// Replaces denied keys and masks personal data in strings, recursively.
 Object? scrubValue(Object? value, {Iterable<String> extra = const [], String key = '', int depth = 0}) {
-  if (value is String) return isIdentifier(key) ? value : maskText(value);
+  // An identifier is not free text (a digit-only span id would pass for a card), but an SDK may build
+  // `user.id` from the e-mail, so an `*id` value still loses an address.
+  if (value is String) return isIdKey(key) ? maskEmails(value) : (isIdentifier(key) ? value : maskText(value));
   if (value == null || value is num || value is bool) return value;
   if (depth >= _maxDepth) return filtered;
   if (value is Map) {
@@ -28,12 +30,12 @@ Object? scrubValue(Object? value, {Iterable<String> extra = const [], String key
 /// Layer 1 for events: nothing personal leaves the device. Works on the event it is given.
 SentryEvent scrubEvent(SentryEvent event, [Iterable<String> extra = const []]) {
   final user = event.user;
-  event.user = (user?.id == null) ? null : SentryUser(id: user!.id);
+  event.user = (user?.id == null) ? null : SentryUser(id: maskEmails(user!.id!));
 
   final request = event.request;
   event.request = (request?.url == null)
       ? null
-      : SentryRequest(url: maskText(request!.url!.split('?').first), method: request.method);
+      : SentryRequest(url: stripUrl(request!.url!), method: request.method);
 
   // ignore: deprecated_member_use
   final extras = event.extra;
@@ -82,7 +84,13 @@ Breadcrumb? scrubBreadcrumb(Breadcrumb? crumb, [Iterable<String> extra = const [
   if (crumb.message != null) crumb.message = maskText(crumb.message!);
   final data = crumb.data;
   if (data != null) {
-    crumb.data = (scrubValue(data, extra: extra) as Map).cast<String, dynamic>();
+    final clean = (scrubValue(data, extra: extra) as Map).cast<String, dynamic>();
+    // A navigation or request crumb carries URLs, whose query and fragment hold tokens.
+    for (final k in const ['url', 'from', 'to']) {
+      final v = clean[k];
+      if (v is String) clean[k] = stripUrl(v);
+    }
+    crumb.data = clean;
   }
   return crumb;
 }
@@ -117,4 +125,25 @@ void _scrubCustomContexts(Contexts contexts, Iterable<String> extra) {
       contexts[key] = scrubValue(value, extra: extra, key: key);
     }
   }
+}
+
+/// Layer 1 for transactions: the same filter as an error event, plus the spans, whose descriptions
+/// carry URLs and SQL and whose data and tags are free text. An app can switch tracing on.
+SentryTransaction scrubTransaction(SentryTransaction transaction, [Iterable<String> extra = const []]) {
+  scrubEvent(transaction, extra);
+  for (final span in transaction.spans) {
+    final description = span.context.description;
+    if (description != null) span.context.description = maskText(description);
+    // The spans are finished by now and `setData`/`setTag` do nothing on a finished span, so the
+    // maps the getters hand back are rewritten in place.
+    final data = span.data;
+    for (final entry in data.entries.toList()) {
+      data[entry.key] = isDenied(entry.key, extra) ? filtered : scrubValue(entry.value, extra: extra, key: entry.key);
+    }
+    final tags = span.tags;
+    for (final entry in tags.entries.toList()) {
+      tags[entry.key] = isDenied(entry.key, extra) ? filtered : maskText(entry.value);
+    }
+  }
+  return transaction;
 }
