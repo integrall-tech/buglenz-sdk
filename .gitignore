@@ -1,3 +1,9 @@
 node_modules/
 dist/
 target/
+
+# Flutter generated files
+.dart_tool/
+build/
+.flutter-plugins-dependencies
+contract/.state/

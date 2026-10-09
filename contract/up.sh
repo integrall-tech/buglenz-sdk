@@ -27,7 +27,7 @@ docker run -d --name bl-img --network bl-net --platform linux/amd64 -p "$PORT:80
 for _ in $(seq 1 60); do curl -sf -o /dev/null "$BASE/health" && break; sleep 1; done
 curl -sf -o /dev/null "$BASE/health" || { docker logs bl-img | tail -20; echo "instance did not start"; exit 1; }
 
-docker create --name bl-rec --network bl-net -e UPSTREAM=http://bl-img:8080 python:3.13-alpine python /recorder.py >/dev/null
+docker create --name bl-rec --network bl-net -p "${REC_PORT:-18096}:8091" -e UPSTREAM=http://bl-img:8080 python:3.13-alpine python /recorder.py >/dev/null
 docker cp "$HERE/recorder.py" bl-rec:/recorder.py
 docker start bl-rec >/dev/null
 
@@ -37,16 +37,18 @@ curl -sf -c "$JAR" -H 'Content-Type: application/json' \
 mk() { curl -sf -b "$JAR" -H 'Content-Type: application/json' -d "{\"name\":\"$1\",\"platform\":\"$2\"}" "$BASE/api/projects"; }
 WEB=$(mk contract-web javascript-react)
 API=$(mk contract-api java-spring-boot)
+MOBILE=$(mk contract-mobile flutter)
 TOKEN=$(curl -sf -b "$JAR" -H 'Content-Type: application/json' -d '{"description":"contract"}' "$BASE/api/tokens" \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
-python3 - "$STATE/env.json" "$BASE" "$TOKEN" "$IMAGE" "$WEB" "$API" <<'PY'
+python3 - "$STATE/env.json" "$BASE" "$TOKEN" "$IMAGE" "$WEB" "$API" "$MOBILE" <<'PY'
 import json, sys
-out, base, token, image, web, api = sys.argv[1:]
-web, api = json.loads(web), json.loads(api)
+out, base, token, image, web, api, mobile = sys.argv[1:]
+web, api, mobile = json.loads(web), json.loads(api), json.loads(mobile)
 json.dump({
     "base": base, "token": token, "image": image,
     "web": {"id": web["id"], "slug": web["slug"], "key": web["sentry_key"].replace("-", "")},
     "api": {"id": api["id"], "slug": api["slug"], "key": api["sentry_key"].replace("-", "")},
+    "mobile": {"id": mobile["id"], "slug": mobile["slug"], "key": mobile["sentry_key"].replace("-", "")},
 }, open(out, "w"), indent=2)
 PY
 echo "instance up: $IMAGE at $BASE"

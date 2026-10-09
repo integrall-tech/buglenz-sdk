@@ -28,6 +28,10 @@ jobs:
           java-version: 21
           cache: maven
           cache-dependency-path: spring-boot/pom.xml
+      - name: Flutter SDK
+        run: |
+          git clone --depth 1 --branch 3.41.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
       - name: Shared rules
         run: npm test
       - name: React wrapper
@@ -40,9 +44,15 @@ jobs:
       - name: Spring Boot wrapper
         working-directory: spring-boot
         run: mvn -B verify
+      - name: Flutter wrapper
+        working-directory: flutter
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
       - name: No reference to the instance's code base
         run: |
-          if grep -rniE 'rustrak|@rustrak' --include='*.json' --include='*.ts' --include='*.tsx' --include='*.java' --include='*.xml' \
+          if grep -rniE 'rustrak|@rustrak' --include='*.json' --include='*.ts' --include='*.tsx' --include='*.java' --include='*.xml' --include='*.dart' --include='pubspec.yaml' \
                --exclude-dir=node_modules --exclude-dir=target --exclude-dir=dist --exclude=package-lock.json .; then
             echo "a wrapper must not depend on or mention the instance's code base"; exit 1
           fi
@@ -58,6 +68,10 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
+      - name: Flutter SDK
+        run: |
+          git clone --depth 1 --branch 3.41.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
       - name: Log in to the registry
         env:
           GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
