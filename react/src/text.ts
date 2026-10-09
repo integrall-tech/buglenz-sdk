@@ -128,7 +128,8 @@ function maskNumbers(text: string): string {
 const isLocal = (c: string) => /[A-Za-z0-9._%+-]/.test(c);
 const isDomain = (c: string) => /[A-Za-z0-9.-]/.test(c);
 
-function maskEmails(text: string): string {
+/** Masks only e-mail addresses, for values under an `*id` key: an id made of digits stays an id. */
+export function maskEmails(text: string): string {
   let out = '';
   let last = 0;
   let i = 0;
@@ -157,4 +158,9 @@ function maskEmails(text: string): string {
 /** Masks every recognised value in `text`; returns the input itself when there is none. */
 export function maskText(text: string): string {
   return maskEmails(maskNumbers(text));
+}
+
+/** A URL without its query string and fragment (they carry tokens), with the rest masked. */
+export function stripUrl(url: string): string {
+  return maskText(url.split(/[?#]/, 1)[0]);
 }

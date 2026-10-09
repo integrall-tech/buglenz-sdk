@@ -24,6 +24,29 @@ describe('initBugLenz', () => {
     expect(o.dataCollection).toMatchObject({ userInfo: false, cookies: false, httpHeaders: false, httpBodies: [], urlQueryParams: false });
   });
 
+  it('filters transactions and spans too, which the app may switch on through extra', () => {
+    const init = vi.mocked(Sentry.init);
+    initBugLenz({ ...base, extra: { tracesSampleRate: 1 } });
+    const o = init.mock.calls.at(-1)![0]!;
+    expect(o.beforeSendTransaction).toBeTypeOf('function');
+    const out = o.beforeSendTransaction!(
+      {
+        type: 'transaction',
+        transaction: '/clientes/ana@example.com',
+        user: { id: 'u-1', email: 'ana@example.com' },
+        request: { url: 'https://a.example.com/c?token=abc#t', headers: { cookie: 'a=b' } },
+        spans: [{ span_id: 'a1', trace_id: 'b2', description: 'GET /api/clientes/ana@example.com?x=1', start_timestamp: 1, data: { password: 'hunter2' } }],
+      } as never,
+      {} as never,
+    ) as any;
+    expect(out.transaction).toBe('/clientes/[email]');
+    expect(out.user).toEqual({ id: 'u-1' });
+    expect(out.request).toEqual({ url: 'https://a.example.com/c', method: undefined });
+    expect(out.spans[0].description).toBe('GET /api/clientes/[email]?x=1');
+    expect(out.spans[0].data.password).toBe('[Filtered]');
+    expect(out.spans[0].span_id).toBe('a1');
+  });
+
   it('does not let extra override what the wrapper fixes', () => {
     const init = vi.mocked(Sentry.init);
     initBugLenz({ ...base, extra: { sampleRate: 0.5, release: 'x', dsn: 'y' } as never });
